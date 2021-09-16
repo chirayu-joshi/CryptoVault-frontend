@@ -1,41 +1,65 @@
-import {  useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { withCookies } from 'react-cookie'
 
-import { getBrowserName, getOSName } from '../utils/ClientInfo'
+import QRCode from './QRCode'
+
 import './App.css'
+import { serverUrl } from '../configs'
+import { getBrowserName, getOSName } from '../utils/ClientInfo'
 
 const App = (props) => {
 
-  useEffect(() => {
-    const {cookies} = props
-    const csrfToken = cookies.get('XSRF-TOKEN');
+  const [id, setId] = useState(localStorage.getItem('id'))
 
-    fetch('https://localhost:8443/api/v1')
-      .then(_ => {
-        console.log(document.cookie)
-        console.log(_.headers.get('set-cookie'))
-        for (var pair of _.headers.entries()) {
-          console.log(pair[0] + ': ' + pair[1]);
-        }
-
-        const requestOptions = {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
-          body: JSON.stringify({ userTypeId: 1 })
-        }
-        fetch('https://localhost:8443/api/v1/id', requestOptions)
-          .then(res => res.json())
-          .then(data => console.log(data))
-          .catch(err => console.log(err))
+  const getUserIdPromise = (csrfToken) => {
+    const requestOptions = {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+      body: JSON.stringify({
+        browserName: getBrowserName(),
+        osName: getOSName(),
       })
-      .catch(err => console.log(err, 'Cannot connect to server. Please try again.'))
+    }
+    return new Promise(async (resolve, reject) => {
+      try {
+        const res = await fetch(serverUrl + '/v1/id', requestOptions)
+        const userId = await res.json()
+        resolve(userId.id)
+      } catch (err) {
+        reject(err, 'Cannot get user id')
+      }
+    })
+  }
 
-    console.log(getBrowserName());
-    console.log(getOSName())
-  }, [props])
+  useEffect(() => {
+    const csrfToken = props.cookies.get('XSRF-TOKEN')
+    if (!csrfToken) {
+      fetch(serverUrl + '/v1', { credentials: 'include' })
+        .then(_ => {
+          getUserIdPromise(props.cookies.get('XSRF-TOKEN'))
+            .then(userId => {
+              localStorage.setItem('id', userId)
+              setId(userId)
+            })
+            .catch(err => console.error(err))
+        })
+        .catch(err => console.error(err, 'Cannot connect to server. Please try again.'))
+    } else {
+      getUserIdPromise(csrfToken)
+        .then(userId => {
+          localStorage.setItem('id', userId)
+          setId(userId)
+        })
+        .catch(err => console.error(err))
+    }
+  }, [props.cookies])
 
-  return <div><h1>CryptoVault</h1></div>
+  return (
+    <div>
+      <QRCode value={id} />
+    </div>
+  )
 }
 
 export default withCookies(App)
