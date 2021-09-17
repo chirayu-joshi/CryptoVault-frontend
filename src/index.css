@@ -29,4 +29,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-color);
+}
+
+p {
+  letter-spacing: 0.5px;
+  color: var(--text-light);
 }

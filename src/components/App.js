@@ -9,7 +9,8 @@ import { getBrowserName, getOSName } from '../utils/ClientInfo'
 
 const App = (props) => {
 
-  const [id, setId] = useState(localStorage.getItem('id'))
+  const [id, setId] = useState()
+  const [isQRCodeError, setIsQRCodeError] = useState(false)
 
   const getUserIdPromise = (csrfToken) => {
     const requestOptions = {
@@ -42,22 +43,31 @@ const App = (props) => {
               localStorage.setItem('id', userId)
               setId(userId)
             })
-            .catch(err => console.error(err))
+            .catch(err => {
+              console.error(err)
+              setIsQRCodeError(true)
+            })
         })
-        .catch(err => console.error(err, 'Cannot connect to server. Please try again.'))
+        .catch(err => {
+          console.error(err, 'Cannot connect to server. Please try again.')
+          setIsQRCodeError(true)
+        })
     } else {
       getUserIdPromise(csrfToken)
         .then(userId => {
           localStorage.setItem('id', userId)
           setId(userId)
         })
-        .catch(err => console.error(err))
+        .catch(err => {
+          console.error(err)
+          setIsQRCodeError(true)
+        })
     }
   }, [props.cookies])
 
   return (
     <div>
-      <QRCode value={id} />
+      <QRCode value={id} isError={isQRCodeError} />
     </div>
   )
 }
